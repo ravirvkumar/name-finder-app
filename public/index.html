@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MongoDB Name Lookup</title>
+</head>
+<body>
+
+    <h2>🔍 Search Names by Value and Starting Letter</h2>
+    <input type="number" id="valueInput" placeholder="Enter value">
+    <input type="text" id="letterInput" placeholder="Starting letter (optional)">
+    <button onclick="fetchNames()">Search</button>
+
+    <h3>Fetched Names:</h3>
+    <div id="nameResults">Waiting for input...</div>
+
+    <hr>
+
+    <h2>➕ Add a New Name</h2>
+    <input type="text" id="newNameInput" placeholder="Enter new name">
+    <button onclick="addName()">Add</button>
+
+    <div id="addResult"></div>
+
+    <script>
+        function fetchNames() {
+            const value = document.getElementById("valueInput").value;
+            const letter = document.getElementById("letterInput").value;
+
+            if (!value) {
+                document.getElementById("nameResults").innerHTML = "⚠️ Please enter a value.";
+                return;
+            }
+
+            let url = `/fetch-names?value=${value}`;
+            if (letter) url += `&letter=${letter}`;
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById("nameResults").innerHTML = data.join("<br>");
+                })
+                .catch(err => {
+                    console.error("❌ Error:", err);
+                    document.getElementById("nameResults").innerHTML = "❌ Something went wrong.";
+                });
+        }
+
+        function addName() {
+            const name = document.getElementById("newNameInput").value;
+            if (!name) {
+                document.getElementById("addResult").innerHTML = "⚠️ Please enter a name.";
+                return;
+            }
+
+            fetch("/add-name", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.message === "Name already exists") {
+                    document.getElementById("addResult").innerHTML = `⚠️ ${name} already exists with value: ${data.value}`;
+                } else {
+                    document.getElementById("addResult").innerHTML = `✅ ${name} added successfully with value: ${data.value}`;
+                }
+            })
+            .catch(err => {
+                console.error("❌ Error:", err);
+                document.getElementById("addResult").innerHTML = "❌ Failed to add name.";
+            });
+        }
+    </script>
+</body>
+</html>
