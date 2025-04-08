@@ -28,9 +28,7 @@ const NameSchema = new mongoose.Schema({
 const NameModel = mongoose.model("Name", NameSchema);
 
 // API Routes
-app.get("/", (req, res) => {
-    res.send("Welcome to Name Finder App!");
-});
+
 
 app.get("/api/names", async (req, res) => {
     const nameQuery = req.query.name;
