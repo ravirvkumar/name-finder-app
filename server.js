@@ -8,7 +8,7 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // MongoDB Connection
-const uri = "mongodb+srv://ravirvkumar:RavikumarP@cluster0.wyngwlr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const uri = "mongodb+srv://ravikumarrv:RavikumarP@cluster0.wyngwlr.mongodb.net/mydatabase?retryWrites=true&w=majority&appName=Cluster0";
 
 mongoose.connect(uri, {
     useNewUrlParser: true,
