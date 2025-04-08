@@ -1,92 +1,64 @@
-// ✅ server.js
 const express = require("express");
-const { MongoClient } = require("mongodb");
+const mongoose = require("mongoose");
+const bodyParser = require("body-parser");
 const cors = require("cors");
-const path = require("path");
 
 const app = express();
 app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
+app.use(bodyParser.json());
 
-const uri = "mongodb://localhost:27017";
-const client = new MongoClient(uri);
-let myCollection;
+// MongoDB Connection
+const uri = "mongodb+srv://ravirvkumar:RavikumarP@cluster0.wyngwlr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
-const char_values = {
-    'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 8, 'G': 3,
-    'H': 5, 'I': 1, 'J': 1, 'K': 2, 'L': 3, 'M': 4, 'N': 5,
-    'O': 7, 'P': 8, 'Q': 1, 'R': 2, 'S': 3, 'T': 4, 'U': 6,
-    'V': 6, 'W': 6, 'X': 5, 'Y': 1, 'Z': 7
-};
-
-async function connectDB() {
-    try {
-        await client.connect();
-        const db = client.db("mydatabase");
-        myCollection = db.collection("mycollection");
-        console.log("✅ Connected to MongoDB");
-    } catch (err) {
-        console.error("❌ Database connection error:", err);
-    }
-}
-connectDB();
-
-app.get('/fetch-names', async (req, res) => {
-    try {
-        const value = parseInt(req.query.value);
-        const letter = req.query.letter?.toUpperCase();
-
-        const query = { Name_Value: value };
-        if (letter) {
-            query.NAMES = { $regex: `^${letter}`, $options: 'i' };
-        }
-
-        const data = await myCollection.find(query).toArray();
-
-        if (data.length === 0) {
-            return res.json(["No names found!"]);
-        }
-
-        const names = data.map(doc => `${doc.NAMES} - ${doc.tamil_name || "—"}`);
-        res.json(names);
-    } catch (error) {
-        console.error("❌ Error fetching data:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
+mongoose.connect(uri, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => {
+    console.log("✅ MongoDB connected successfully");
+}).catch((err) => {
+    console.error("❌ MongoDB connection error:", err);
 });
 
-// ✅ Add new name
-app.post("/add-name", async (req, res) => {
-    try {
-        const rawName = req.body.name;
-        if (!rawName) return res.status(400).json({ error: "Name is required" });
-
-        const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase();
-
-        const existing = await myCollection.findOne({ NAMES: formattedName });
-        if (existing) {
-            return res.json({ message: "Name already exists", value: existing.Name_Value });
-        }
-
-        // Calculate value
-        const calculatedValue = [...formattedName.toUpperCase()].reduce((sum, ch) => {
-            return sum + (char_values[ch] || 0);
-        }, 0);
-
-        await myCollection.insertOne({ NAMES: formattedName, Name_Value: calculatedValue });
-        res.json({ message: "Name added successfully", value: calculatedValue });
-    } catch (err) {
-        console.error("❌ Error adding name:", err);
-        res.status(500).json({ error: "Internal server error" });
-    }
+// Define Schema & Model
+const NameSchema = new mongoose.Schema({
+    name: String,
+    tamilName: String
 });
 
+const NameModel = mongoose.model("Name", NameSchema);
+
+// API Routes
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "public", "index.html"));
+    res.send("Welcome to Name Finder App!");
 });
 
-const PORT = 3000;
+app.get("/api/names", async (req, res) => {
+    const nameQuery = req.query.name;
+    try {
+        const data = await NameModel.findOne({ name: new RegExp("^" + nameQuery + "$", "i") });
+        if (data) {
+            res.json({ tamilName: data.tamilName });
+        } else {
+            res.status(404).json({ message: "Name not found" });
+        }
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching name", error });
+    }
+});
+
+app.post("/api/names", async (req, res) => {
+    const { name, tamilName } = req.body;
+    try {
+        const newName = new NameModel({ name, tamilName });
+        await newName.save();
+        res.status(201).json({ message: "Name added successfully" });
+    } catch (error) {
+        res.status(500).json({ message: "Error saving name", error });
+    }
+});
+
+// Server Listen
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-    console.log(`🚀 Server running at: http://localhost:${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
 });

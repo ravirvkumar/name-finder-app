@@ -1,3 +1,4 @@
+// ✅ server.js
 const express = require("express");
 const { MongoClient } = require("mongodb");
 const cors = require("cors");
@@ -5,12 +6,11 @@ const path = require("path");
 
 const app = express();
 app.use(cors());
-app.use(express.json()); // For parsing JSON
-app.use(express.static(path.join(__dirname, "public"))); // Serve static files
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
 
 const uri = "mongodb://localhost:27017";
 const client = new MongoClient(uri);
-
 let myCollection;
 
 const char_values = {
@@ -30,26 +30,25 @@ async function connectDB() {
         console.error("❌ Database connection error:", err);
     }
 }
-
 connectDB();
 
-// ✅ Fetch names based on Name_Value and optional starting letter
 app.get('/fetch-names', async (req, res) => {
     try {
         const value = parseInt(req.query.value);
-        const startsWith = req.query.startsWith?.toUpperCase();
+        const letter = req.query.letter?.toUpperCase();
 
         const query = { Name_Value: value };
-        if (startsWith) {
-            query.NAMES = { $regex: `^${startsWith}`, $options: "i" };
+        if (letter) {
+            query.NAMES = { $regex: `^${letter}`, $options: 'i' };
         }
 
         const data = await myCollection.find(query).toArray();
+
         if (data.length === 0) {
             return res.json(["No names found!"]);
         }
 
-        const names = data.map(doc => doc.NAMES);
+        const names = data.map(doc => `${doc.NAMES} - ${doc.tamil_name || "—"}`);
         res.json(names);
     } catch (error) {
         console.error("❌ Error fetching data:", error);
@@ -57,43 +56,32 @@ app.get('/fetch-names', async (req, res) => {
     }
 });
 
-// ✅ Add new name if not exists
-app.post('/add-name', async (req, res) => {
+// ✅ Add new name
+app.post("/add-name", async (req, res) => {
     try {
-        const name = req.body.name?.toUpperCase();
-        if (!name) return res.status(400).json({ error: "Name is required" });
+        const rawName = req.body.name;
+        if (!rawName) return res.status(400).json({ error: "Name is required" });
 
-        const existing = await myCollection.findOne({ NAMES: name });
+        const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase();
+
+        const existing = await myCollection.findOne({ NAMES: formattedName });
         if (existing) {
-            return res.json({
-                message: "Already exists",
-                name: existing.NAMES,
-                value: existing.Name_Value
-            });
+            return res.json({ message: "Name already exists", value: existing.Name_Value });
         }
 
         // Calculate value
-        const nameValue = name.split('')
-            .map(char => char_values[char] || 0)
-            .reduce((sum, val) => sum + val, 0);
+        const calculatedValue = [...formattedName.toUpperCase()].reduce((sum, ch) => {
+            return sum + (char_values[ch] || 0);
+        }, 0);
 
-        await myCollection.insertOne({
-            NAMES: name,
-            Name_Value: nameValue
-        });
-
-        res.json({
-            message: "Added",
-            name: name,
-            value: nameValue
-        });
-    } catch (error) {
-        console.error("❌ Error adding name:", error);
+        await myCollection.insertOne({ NAMES: formattedName, Name_Value: calculatedValue });
+        res.json({ message: "Name added successfully", value: calculatedValue });
+    } catch (err) {
+        console.error("❌ Error adding name:", err);
         res.status(500).json({ error: "Internal server error" });
     }
 });
 
-// ✅ Fallback to index.html for root
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });

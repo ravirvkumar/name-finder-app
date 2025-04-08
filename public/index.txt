@@ -2,85 +2,54 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MongoDB Name Lookup</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 30px;
-        }
-        input, button {
-            padding: 8px;
-            margin: 5px 0;
-        }
-        button {
-            cursor: pointer;
-        }
-        #output, #addResult {
-            margin-top: 10px;
-            font-weight: bold;
-        }
-    </style>
 </head>
 <body>
 
-    <h2>🔍 Fetch Names</h2>
-    <label>Enter a Name_Value:</label><br>
-    <input type="number" id="nameValueInput" placeholder="e.g. 10"><br>
+    <h2>🔍 Search Names by Value and Starting Letter</h2>
+    <input type="number" id="valueInput" placeholder="Enter value">
+    <input type="text" id="letterInput" placeholder="Starting letter (optional)">
+    <button onclick="fetchNames()">Search</button>
 
-    <label>Optional: Starts with letter</label><br>
-    <input type="text" id="startsWithInput" placeholder="e.g. A"><br>
-
-    <button onclick="fetchNames()">Fetch Names</button>
-
-    <div id="output">Waiting for input...</div>
+    <h3>Fetched Names:</h3>
+    <div id="nameResults">Waiting for input...</div>
 
     <hr>
 
     <h2>➕ Add a New Name</h2>
-    <label>Enter a Name:</label><br>
-    <input type="text" id="newNameInput" placeholder="e.g. John"><br>
-
-    <button onclick="addName()">Add Name</button>
+    <input type="text" id="newNameInput" placeholder="Enter new name">
+    <button onclick="addName()">Add</button>
 
     <div id="addResult"></div>
 
     <script>
-        // ✅ Fetch names from backend
         function fetchNames() {
-            const value = document.getElementById("nameValueInput").value;
-            const startsWith = document.getElementById("startsWithInput").value.trim();
+            const value = document.getElementById("valueInput").value;
+            const letter = document.getElementById("letterInput").value;
 
             if (!value) {
-                document.getElementById("output").innerHTML = "❌ Please enter a number.";
+                document.getElementById("nameResults").innerHTML = "⚠️ Please enter a value.";
                 return;
             }
 
             let url = `/fetch-names?value=${value}`;
-            if (startsWith) {
-                url += `&startsWith=${startsWith}`;
-            }
+            if (letter) url += `&letter=${letter}`;
 
             fetch(url)
-                .then(response => response.json())
+                .then(res => res.json())
                 .then(data => {
-                    if (data.length && data[0] !== "No names found!") {
-                        document.getElementById("output").innerHTML = "✅ Matching Names:<br>" + data.join("<br>");
-                    } else {
-                        document.getElementById("output").innerHTML = "⚠️ No names found!";
-                    }
+                    document.getElementById("nameResults").innerHTML = data.join("<br>");
                 })
-                .catch(error => {
-                    console.error("❌ Error fetching data:", error);
-                    document.getElementById("output").innerHTML = "❌ Server error while fetching names.";
+                .catch(err => {
+                    console.error("❌ Error:", err);
+                    document.getElementById("nameResults").innerHTML = "❌ Something went wrong.";
                 });
         }
 
-        // ✅ Add a new name to database
         function addName() {
-            const name = document.getElementById("newNameInput").value.trim();
+            const name = document.getElementById("newNameInput").value;
             if (!name) {
-                document.getElementById("addResult").innerHTML = "❌ Please enter a valid name.";
+                document.getElementById("addResult").innerHTML = "⚠️ Please enter a name.";
                 return;
             }
 
@@ -91,22 +60,17 @@
             })
             .then(res => res.json())
             .then(data => {
-                if (data.message === "Already exists") {
-                    document.getElementById("addResult").innerHTML =
-                        `⚠️ Name already exists: <strong>${data.name}</strong> (Value: ${data.value})`;
-                } else if (data.message === "Added") {
-                    document.getElementById("addResult").innerHTML =
-                        `✅ Name added successfully: <strong>${data.name}</strong> (Value: ${data.value})`;
+                if (data.message === "Name already exists") {
+                    document.getElementById("addResult").innerHTML = `⚠️ ${name} already exists with value: ${data.value}`;
                 } else {
-                    document.getElementById("addResult").innerHTML = "❌ Unexpected response from server.";
+                    document.getElementById("addResult").innerHTML = `✅ ${name} added successfully with value: ${data.value}`;
                 }
             })
-            .catch(error => {
-                console.error("❌ Error adding name:", error);
-                document.getElementById("addResult").innerHTML = "❌ Server error while adding name.";
+            .catch(err => {
+                console.error("❌ Error:", err);
+                document.getElementById("addResult").innerHTML = "❌ Failed to add name.";
             });
         }
     </script>
-
 </body>
 </html>
