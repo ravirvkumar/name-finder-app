@@ -1,62 +1,51 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const bodyParser = require("body-parser");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
+const PORT = 3000;
+
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-// MongoDB Connection
-const uri = "mongodb+srv://ravikumarrv:RavikumarP@cluster0.wyngwlr.mongodb.net/mydatabase?retryWrites=true&w=majority&appName=Cluster0";
+// ✅ MongoDB Atlas connection string
+const mongoURI = "mongodb+srv://ravikumarrv:RavikumarP@cluster0.wyngwlr.mongodb.net/mydatabase?retryWrites=true&w=majority&appName=Cluster0";
 
-mongoose.connect(uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}).then(() => {
-    console.log("✅ MongoDB connected successfully");
-}).catch((err) => {
-    console.error("❌ MongoDB connection error:", err);
-});
+// ✅ Connect to MongoDB Atlas
+mongoose.connect(mongoURI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log("✅ Connected to MongoDB Atlas"))
+.catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// Define Schema & Model
-const NameSchema = new mongoose.Schema({
-    name: String,
-    tamilName: String
-});
+// ✅ Define schema (points to "mycollection" in your database)
+const nameSchema = new mongoose.Schema({
+  Name_Value: Number,
+  NAMES: String,
+  tamil_name: String
+}, { collection: "mycollection" });
 
-const NameModel = mongoose.model("Name", NameSchema);
+const NameModel = mongoose.model("NameModel", nameSchema);
 
-// API Routes
-
-
-app.get("/api/names", async (req, res) => {
-    const nameQuery = req.query.name;
-    try {
-        const data = await NameModel.findOne({ name: new RegExp("^" + nameQuery + "$", "i") });
-        if (data) {
-            res.json({ tamilName: data.tamilName });
-        } else {
-            res.status(404).json({ message: "Name not found" });
-        }
-    } catch (error) {
-        res.status(500).json({ message: "Error fetching name", error });
+// ✅ API route to fetch names by Name_Value
+app.get("/get-name/:value", async (req, res) => {
+  const value = parseInt(req.params.value);
+  try {
+    const names = await NameModel.find({ Name_Value: value });
+    if (names.length === 0) {
+      return res.status(404).json({ message: "❌ No names found for that value." });
     }
+    res.json(names);
+  } catch (err) {
+    res.status(500).json({ message: "❌ Error fetching data", error: err });
+  }
 });
 
-app.post("/api/names", async (req, res) => {
-    const { name, tamilName } = req.body;
-    try {
-        const newName = new NameModel({ name, tamilName });
-        await newName.save();
-        res.status(201).json({ message: "Name added successfully" });
-    } catch (error) {
-        res.status(500).json({ message: "Error saving name", error });
-    }
-});
+// ✅ Serve frontend (index.html)
+app.use(express.static(path.join(__dirname, "public")));
 
-// Server Listen
-const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Server running `);
 });

@@ -1,76 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>MongoDB Name Lookup</title>
+  <meta charset="UTF-8">
+  <title>Search Names</title>
 </head>
 <body>
+  <h2>Search Names by Value</h2>
+  <input type="number" id="valueInput" placeholder="Enter Name_Value" />
+  <button onclick="fetchNames()">Search</button>
 
-    <h2>🔍 Search Names by Value and Starting Letter</h2>
-    <input type="number" id="valueInput" placeholder="Enter value">
-    <input type="text" id="letterInput" placeholder="Starting letter (optional)">
-    <button onclick="fetchNames()">Search</button>
+  <div id="result" style="margin-top: 20px;"></div>
 
-    <h3>Fetched Names:</h3>
-    <div id="nameResults">Waiting for input...</div>
+  <script>
+    async function fetchNames() {
+      const value = document.getElementById("valueInput").value;
+      const resultDiv = document.getElementById("result");
 
-    <hr>
+      if (!value) {
+        resultDiv.innerHTML = "⚠️ Please enter a value.";
+        return;
+      }
 
-    <h2>➕ Add a New Name</h2>
-    <input type="text" id="newNameInput" placeholder="Enter new name">
-    <button onclick="addName()">Add</button>
+      resultDiv.innerHTML = "🔍 Searching...";
 
-    <div id="addResult"></div>
+      try {
+        const response = await fetch(`/get-name/${value}`);
+        if (!response.ok) throw new Error("Not found");
 
-    <script>
-        function fetchNames() {
-            const value = document.getElementById("valueInput").value;
-            const letter = document.getElementById("letterInput").value;
+        const data = await response.json();
 
-            if (!value) {
-                document.getElementById("nameResults").innerHTML = "⚠️ Please enter a value.";
-                return;
-            }
+        let html = "<h3>Matching Names:</h3><ul>";
+        data.forEach((item) => {
+          html += `<li><strong>${item.NAMES}</strong> (${item.tamil_name})</li>`;
+        });
+        html += "</ul>";
 
-            let url = `/fetch-names?value=${value}`;
-            if (letter) url += `&letter=${letter}`;
-
-            fetch(url)
-                .then(res => res.json())
-                .then(data => {
-                    document.getElementById("nameResults").innerHTML = data.join("<br>");
-                })
-                .catch(err => {
-                    console.error("❌ Error:", err);
-                    document.getElementById("nameResults").innerHTML = "❌ Something went wrong.";
-                });
-        }
-
-        function addName() {
-            const name = document.getElementById("newNameInput").value;
-            if (!name) {
-                document.getElementById("addResult").innerHTML = "⚠️ Please enter a name.";
-                return;
-            }
-
-            fetch("/add-name", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.message === "Name already exists") {
-                    document.getElementById("addResult").innerHTML = `⚠️ ${name} already exists with value: ${data.value}`;
-                } else {
-                    document.getElementById("addResult").innerHTML = `✅ ${name} added successfully with value: ${data.value}`;
-                }
-            })
-            .catch(err => {
-                console.error("❌ Error:", err);
-                document.getElementById("addResult").innerHTML = "❌ Failed to add name.";
-            });
-        }
-    </script>
+        resultDiv.innerHTML = html;
+      } catch (err) {
+        resultDiv.innerHTML = "❌ No names found for that value.";
+      }
+    }
+  </script>
 </body>
 </html>
